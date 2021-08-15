@@ -38,6 +38,7 @@ class ResidualBottleneck(nn.Module):
 if __name__ == '__main__':
     input = torch.randn(3, 128, 443, 443)
     block = ResidualBlock(128)
+    
     print(block(input).size())
 
     bottleneck = ResidualBottleneck(128)
