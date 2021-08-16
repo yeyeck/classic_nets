@@ -11,13 +11,13 @@ from torchvision import models
 from config.hyper import load_config
 
 
-def train_loop(model, dataloader, lossfn, optimizer, epoch, epochs):
+def train_loop(model, dataloader, lossfn, optimizer, use_gpu, epoch, epochs):
     model.train()
     pbar = tqdm(dataloader)
     print(('\n' + '%12s' * 3) % ('Epoch', 'gpu_mem', 'loss'))
     for X, y in pbar:
         # gpu spped up
-        if torch.cuda.is_available():
+        if use_gpu:
             X = X.cuda()
             y = y.cuda()
         # froward propagation
@@ -37,7 +37,7 @@ def train_loop(model, dataloader, lossfn, optimizer, epoch, epochs):
         pbar.set_description(s)
     return loss
 
-def val_loop(model, dataloader, loss_fn, epoch, epochs):
+def val_loop(model, dataloader, loss_fn, use_gpu, epoch, epochs):
     model.eval()
     batch = len(dataloader)
     size = len(dataloader.dataset)
@@ -46,7 +46,7 @@ def val_loop(model, dataloader, loss_fn, epoch, epochs):
     correct = 0
     with torch.no_grad():
         for X, y in pbar:
-            if torch.cuda.is_available():
+            if use_gpu:
                 X = X.cuda()
                 y = y.cuda()
             pred = model(X)
@@ -67,10 +67,22 @@ def main(opt):
 
 
     # args
-    batch_size, img_size, epochs, workers, data, weights, lr, optimizer_type, name, class_num, hyper_config \
+    batch_size, img_size, epochs, workers, data, weights, lr, optimizer_type, name, class_num, hyper_config, device \
         = opt.batch_size, opt.img_size, opt.epochs, opt.workers, opt.data, opt.weights, opt.lr, opt.optimizer, \
-            opt.name, opt.class_num, opt.hyper
+            opt.name, opt.class_num, opt.hyper, opt.device
     
+    if device == 'cpu' or torch.cuda.is_available():
+        use_gpu = False
+    else:
+        use_gpu = True
+        device_count = torch.cuda.device_count()
+        device = [int(i) for i in device.split(',')]
+        device_ids = [i for i in device if i < device_count]
+        device = [str(i) for i in device_ids]
+        os.environ['CUDA_VISIBLE_DEVICES'] = ','.join(device)
+        print(f'Choose devices: {device_ids}')
+
+
     # check and make the path if not exists
     save_to = os.path.join('runs/train', name)
     if os.path.exists(save_to):
@@ -94,40 +106,23 @@ def main(opt):
         print(f'loading model from {weights}')
         model = torch.load(weights)
     else:
-        # model = AlexNet(out_features=class_num)
         model = VGG(num_layers=16, out_features=class_num)
-        # model = models.vgg16(pretrained=True)
-        # model.classifier = nn.Sequential(
-        #     nn.Linear(512 * 49, 4096),
-        #     nn.Dropout(p=0.5),
-        #     nn.ReLU(inplace=True),    
-        #     nn.Linear(4096, 4096),
-        #     nn.Dropout(p=0.5),
-        #     nn.ReLU(inplace=True),
-        #     nn.Linear(4096, class_num)
-        # )
     
     print(model)
     
     # loss, optimizer
     lossfn = nn.CrossEntropyLoss()
 
-    # use cuda if it is available
-    if torch.cuda.is_available():
-        model = model.cuda()
-        lossfn = lossfn.cuda()  
+    if use_gpu:
+        model = nn.DataParallel(model, device_ids=device_ids)
+        model.cuda()
+        lossfn = lossfn.cuda()
     
     # hyper config
     hyper = load_config(hyper_config)
     optimizer = hyper.getOptimizer(model.parameters())
     scheduler = hyper.geLrScheduler(optimizer)
-    # if optimizer_type == 'sgd':
-    #     optimizer = torch.optim.SGD(model.parameters(), lr=lr, momentum=0.9)
-    # elif optimizer_type == 'adam':
-    #     optimizer = torch.optim.Adam(model.parameters(), lr=lr, betas=(0.9, 0.999))
-    # # scheduler = torch.optim.lr_scheduler.ExponentialLR(optimizer, 1)
-    # scheduler = torch.optim.lr_scheduler.StepLR(optimizer, step_size=30, gamma=0.1)
-    # training
+
     best_loss = 0
     lrs = []
     train_losses = []
@@ -135,8 +130,8 @@ def main(opt):
     accuracy = []
     for epoch in range(epochs):
         # training and validating
-        train_loss = train_loop(model, train_loader, lossfn, optimizer, epoch, epochs)
-        val_loss, accu = val_loop(model, val_loader, lossfn, epoch, epochs)
+        train_loss = train_loop(model, train_loader, lossfn, optimizer, use_gpu, epoch, epochs)
+        val_loss, accu = val_loop(model, val_loader, lossfn, use_gpu, epoch, epochs)
         
         # record the training
         train_losses.append(train_loss)
@@ -171,6 +166,7 @@ if __name__ == '__main__':
     parser.add_argument('--class-num', type=int, default=256, help='number of categories')
     parser.add_argument('--workers', type=int, default=0, help='number of workers')
     parser.add_argument('--epochs', type=int, default=100, help='Epochs')
+    parser.add_argument('--device', type=str, default='0,1', help='cuda device, i.e. 0 or 0,1,2,3 or cpu')
     parser.add_argument('--optimizer', type=str, default='sgd', help='optimizer type, adam or sgd')
     parser.add_argument('--name', type=str, default='exp', help='name of the traning')
     opt = parser.parse_args()
