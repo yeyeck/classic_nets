@@ -103,8 +103,8 @@ def main(opt):
 
 
     # data
-    train_loader = create_dataloader(data, train=True, batch_size=batch_size, num_workers=workers)
-    val_loader = create_dataloader(data, train=False, batch_size=batch_size, num_workers=workers)
+    train_loader = create_dataloader(data, img_size, train=True, batch_size=batch_size, num_workers=workers)
+    val_loader = create_dataloader(data, img_size, train=False, batch_size=batch_size, num_workers=workers)
 
     # config
     cfg = load_cfg(hyper_config)

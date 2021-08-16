@@ -4,8 +4,8 @@ lr: 0.01
 
 # net
 net:
-  type: VGG
-  num_layers: 16
+  type: AlexNet
+  # num_layers: 16
 
 # optimizer, sgd, Adam
 optimizer:

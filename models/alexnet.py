@@ -39,9 +39,7 @@ class AlexNet(nn.Module):
 
     def forward(self, x):
         x = self.features(x)
-        print(x.size())
         x = self.avgpool(x)
-        print(x.size())
         x = self.classifier(x)
         return x
 

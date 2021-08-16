@@ -29,7 +29,7 @@ class Caltech256(Dataset):
         return image, label
 
 
-def create_dataloader(img_dir, train=False, batch_size=128, num_workers=0):
+def create_dataloader(img_dir, img_size, train=False, batch_size=128, num_workers=0):
     train_dir = os.path.join(img_dir, 'train')
     classes = sorted(os.listdir(train_dir))
     if train:
@@ -39,7 +39,7 @@ def create_dataloader(img_dir, train=False, batch_size=128, num_workers=0):
             transforms.RandomVerticalFlip(p=0.3),
             transforms.ToTensor(),
             transforms.RandomApply(torch.nn.ModuleList([transforms.RandomCrop(size=224)]), p=0.5),
-            transforms.Resize(size=(224, 224)),
+            transforms.Resize(size=(img_size, img_size)),
             transforms.RandomErasing(p=0.4)    
         ])
         img_dir = train_dir
@@ -48,7 +48,7 @@ def create_dataloader(img_dir, train=False, batch_size=128, num_workers=0):
     else:
         transform = transforms.Compose([
             transforms.ToTensor(),
-            transforms.Resize(size=(224, 224)), 
+            transforms.Resize(size=(img_size, img_size)), 
         ])
         img_dir = os.path.join(img_dir, 'val')
 
