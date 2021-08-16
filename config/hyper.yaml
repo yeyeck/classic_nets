@@ -1,7 +1,11 @@
 
 # basic
 lr: 0.01
-backbone: resnet
+
+# net
+net:
+  type: VGG
+  num_layers: 16
 
 # optimizer, sgd, Adam
 optimizer:
@@ -12,7 +16,6 @@ optimizer:
 # schedule
 scheduler:
   type: ReduceLROnPlateau
-  # on: accuracy
   mode: max
   factor: 0.1
   patience: 10

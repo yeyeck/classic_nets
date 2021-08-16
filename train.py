@@ -4,12 +4,16 @@ from utils.datasets import create_dataloader
 from tqdm import tqdm
 import torch
 from torch import nn
-from models.vgg import VGG
-from models.alexnet import AlexNet
 from utils.visual import plot_loss, plot_lr, plot_accuracy
-from torchvision import models
-from config.hyper import load_config
+from config.hyper import HyperConfig
+from models import create_net
+import yaml
 
+
+def load_cfg(cfg_pth):
+    with open(cfg_pth, 'r') as f:
+        cfg = yaml.load(f, Loader=yaml.FullLoader)
+        return cfg
 
 def train_loop(model, dataloader, lossfn, optimizer, use_gpu, epoch, epochs):
     model.train()
@@ -67,12 +71,13 @@ def main(opt):
 
 
     # args
-    batch_size, img_size, epochs, workers, data, weights, lr, optimizer_type, name, class_num, hyper_config, device \
-        = opt.batch_size, opt.img_size, opt.epochs, opt.workers, opt.data, opt.weights, opt.lr, opt.optimizer, \
+    batch_size, img_size, epochs, workers, data, weights, lr, name, class_num, hyper_config, device \
+        = opt.batch_size, opt.img_size, opt.epochs, opt.workers, opt.data, opt.weights, opt.lr, \
             opt.name, opt.class_num, opt.hyper, opt.device
     
-    if device == 'cpu' or torch.cuda.is_available():
+    if device == 'cpu' or not torch.cuda.is_available():
         use_gpu = False
+        print(f'device: cpu')
     else:
         use_gpu = True
         device_count = torch.cuda.device_count()
@@ -101,12 +106,19 @@ def main(opt):
     train_loader = create_dataloader(data, train=True, batch_size=batch_size, num_workers=workers)
     val_loader = create_dataloader(data, train=False, batch_size=batch_size, num_workers=workers)
 
+    # config
+    cfg = load_cfg(hyper_config)
+    cfg['lr'] = lr
+    net_cfg = cfg['net']
+
+
     # model
     if weights and weights != '':
         print(f'loading model from {weights}')
         model = torch.load(weights)
     else:
-        model = VGG(num_layers=16, out_features=class_num)
+        # model = VGG(num_layers=16, out_features=class_num)
+        model = create_net(net_cfg, out_features=class_num)
     
     print(model)
     
@@ -119,7 +131,7 @@ def main(opt):
         lossfn = lossfn.cuda()
     
     # hyper config
-    hyper = load_config(hyper_config)
+    hyper = HyperConfig(cfg)
     optimizer = hyper.getOptimizer(model.parameters())
     scheduler = hyper.geLrScheduler(optimizer)
 
@@ -166,7 +178,7 @@ if __name__ == '__main__':
     parser.add_argument('--class-num', type=int, default=256, help='number of categories')
     parser.add_argument('--workers', type=int, default=0, help='number of workers')
     parser.add_argument('--epochs', type=int, default=100, help='Epochs')
-    parser.add_argument('--device', type=str, default='0,1', help='cuda device, i.e. 0 or 0,1,2,3 or cpu')
+    parser.add_argument('--device', type=str, default='0', help='cuda device, i.e. 0 or 0,1,2,3 or cpu')
     parser.add_argument('--optimizer', type=str, default='sgd', help='optimizer type, adam or sgd')
     parser.add_argument('--name', type=str, default='exp', help='name of the traning')
     opt = parser.parse_args()
