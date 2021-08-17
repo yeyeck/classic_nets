@@ -5,7 +5,7 @@ from tqdm import tqdm
 import torch
 from torch import nn
 from utils.visual import plot_loss, plot_lr, plot_accuracy
-from config.hyper import HyperConfig
+from hyper.hyper import HyperConfig
 from models import create_net
 import yaml
 
@@ -88,7 +88,7 @@ def main(opt):
         print(f'Choose devices: {device_ids}')
 
 
-    # check and make the path if not exists
+    # check and create the path if not exists
     save_to = os.path.join('runs/train', name)
     if os.path.exists(save_to):
         name = time.strftime('%Y%m%d-%H-%M-%S', time.localtime())
@@ -115,7 +115,7 @@ def main(opt):
     # model
     if weights and weights != '':
         print(f'loading model from {weights}')
-        model = torch.load(weights)
+        model = torch.load(weights, map_location='cpu')
     else:
         # model = VGG(num_layers=16, out_features=class_num)
         model = create_net(net_cfg, out_features=class_num)
@@ -126,8 +126,8 @@ def main(opt):
     lossfn = nn.CrossEntropyLoss()
 
     if use_gpu:
-        model = nn.DataParallel(model, device_ids=device_ids)
         model.cuda()
+        model = nn.DataParallel(model, device_ids=device_ids)
         lossfn = lossfn.cuda()
     
     # hyper config
@@ -170,7 +170,7 @@ def main(opt):
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
     parser.add_argument('--data', type=str, default='/caltech256', help='data for training')
-    parser.add_argument('--hyper', type=str, default='config/hyper.yaml', help='hyper parameters: including optimizer and scheduler')
+    parser.add_argument('--hyper', type=str, default='hyper/configs/vgg.yaml', help='hyper parameters: including optimizer and scheduler')
     parser.add_argument('--lr', type=float, default=0.01, help='learning rate')
     parser.add_argument('--weights', type=str, default='', help='data for training')
     parser.add_argument('--batch-size', type=int, default=64, help='batch-size')

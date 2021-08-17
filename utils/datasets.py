@@ -1,5 +1,5 @@
 import torch
-from torch.utils.data import DataLoader, Dataset, dataset
+from torch.utils.data import DataLoader, Dataset
 from PIL import Image
 from torchvision import transforms
 import os, glob
@@ -33,14 +33,15 @@ def create_dataloader(img_dir, img_size, train=False, batch_size=128, num_worker
     train_dir = os.path.join(img_dir, 'train')
     classes = sorted(os.listdir(train_dir))
     if train:
-        transform = transforms.Compose([
+        transform = transform = transforms.Compose([
+            transforms.ColorJitter(brightness=.5, hue=.3),
             transforms.Resize(size=300),
             transforms.RandomHorizontalFlip(p=0.5),
             transforms.RandomVerticalFlip(p=0.3),
             transforms.ToTensor(),
-            transforms.RandomApply(torch.nn.ModuleList([transforms.RandomCrop(size=224)]), p=0.5),
-            transforms.Resize(size=(img_size, img_size)),
-            transforms.RandomErasing(p=0.4)    
+            transforms.RandomApply(torch.nn.ModuleList([transforms.RandomCrop(size=260)]), p=0.5),
+            transforms.Resize(size=(227, 227)),
+            transforms.RandomErasing(p=0.4, scale=(0.02, 0.1), ratio=(0.8, 1))   
         ])
         img_dir = train_dir
         
@@ -59,10 +60,24 @@ def create_dataloader(img_dir, img_size, train=False, batch_size=128, num_worker
 
 if __name__ == '__main__':
     import random
+    import matplotlib.pyplot as plt
     classes = sorted(os.listdir('/caltech20/train'))
     print(classes)
-    dataset = Caltech256('/caltech20/train', classes=classes)
+    transform = transform = transforms.Compose([
+            transforms.ColorJitter(brightness=.5, hue=.3),
+            transforms.Resize(size=300),
+            transforms.RandomHorizontalFlip(p=0.5),
+            transforms.RandomVerticalFlip(p=0.3),
+            transforms.ToTensor(),
+            transforms.RandomApply(torch.nn.ModuleList([transforms.RandomCrop(size=224)]), p=0.5),
+            transforms.Resize(size=(227, 227)),
+            transforms.RandomErasing(p=0.4)   
+        ])
+    dataset = Caltech256('/caltech20/train', classes=classes, transform=transform)
     n = dataset.__len__()
-    for i in range(100):
-        img_pth, _, label = dataset.__getitem__(random.randint(0, n))
-        print(img_pth, label)
+    for i in range(10):
+        data = Image.open('./001_0001.jpg')
+        data = transform(data)
+        plt.show(data)
+        img_pth, data, label = dataset.__getitem__(random.randint(0, n))
+        plt.show(data)

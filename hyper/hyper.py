@@ -50,9 +50,5 @@ class HyperConfig(object):
             eta_min = scheduler_conf['eta_min']
             return CosineAnnealingLR(optimizer, T_max=T_max, eta_min=eta_min)
 
-def load_config(cfg):
-    with open(cfg_pth, 'r') as f:
-        cfg = yaml.load(f)
-        return HyperConfig(cfg)
 
 
