@@ -21,7 +21,7 @@ Since the limit of my hardware, the models are trained on Caltech256 dataset. Ca
             --**.jpg
         |...
 ``` 
-## Traning
+## Training
 ```bash
 python train.py --data /caltech256 --hyper ./config/hyper.yaml --class-num 256 --batch-size 256 --name exp
 ```
